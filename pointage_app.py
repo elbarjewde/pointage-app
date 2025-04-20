@@ -55,7 +55,7 @@ def parse_time(time_str):
 start_time = parse_time(start_time_input)
 end_time = parse_time(end_time_input)
 
-# إضافة كود JavaScript لتحديد الموقع
+# إضافة كود JavaScript لتحديد الموقع تلقائيًا عند فتح الصفحة
 components.html("""
 <script>
 navigator.geolocation.getCurrentPosition(
