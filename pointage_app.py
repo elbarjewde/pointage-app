@@ -12,8 +12,8 @@ texts = {
         "full_name": "Nom complet",
         "position": "Poste",
         "department": "Département",
-        "start_time": "Heure de début",
-        "end_time": "Heure de fin",
+        "start_time": "Heure de début (HH:MM)",
+        "end_time": "Heure de fin (HH:MM)",
         "submit": "Enregistrer",
         "location_error": "Vous devez être au lieu de travail pour pointer.",
         "success": "Pointage enregistré avec succès."
@@ -23,8 +23,8 @@ texts = {
         "full_name": "الاسم الكامل",
         "position": "الوظيفة",
         "department": "القطاع",
-        "start_time": "وقت بداية الدوام",
-        "end_time": "وقت نهاية الدوام",
+        "start_time": "وقت بداية الدوام (ساعة:دقيقة)",
+        "end_time": "وقت نهاية الدوام (ساعة:دقيقة)",
         "submit": "تسجيل",
         "location_error": "يجب أن تكون في مكان العمل لتسجيل الحضور.",
         "success": "تم تسجيل الحضور بنجاح."
@@ -39,8 +39,21 @@ st.title(selected_texts["title"])
 name = st.text_input(selected_texts["full_name"])
 position = st.text_input(selected_texts["position"])
 department = st.text_input(selected_texts["department"])
-start_time = st.time_input(selected_texts["start_time"], value=datetime.time(8, 0))
-end_time = st.time_input(selected_texts["end_time"], value=datetime.time(16, 0))
+
+# إدخال الوقت على شكل (ساعة:دقيقة)
+start_time_input = st.text_input(selected_texts["start_time"], "08:00")
+end_time_input = st.text_input(selected_texts["end_time"], "16:00")
+
+# تحقق من أن المدخلات هي في تنسيق الوقت الصحيح
+def parse_time(time_str):
+    try:
+        return datetime.datetime.strptime(time_str, "%H:%M").time()
+    except ValueError:
+        st.error("يرجى إدخال الوقت بالتنسيق الصحيح (ساعة:دقيقة).")
+        return None
+
+start_time = parse_time(start_time_input)
+end_time = parse_time(end_time_input)
 
 # إضافة كود JavaScript لتحديد الموقع
 components.html("""
@@ -52,6 +65,9 @@ navigator.geolocation.getCurrentPosition(
     if (input) input.value = coords;
     const event = new Event("input", { bubbles: true });
     input.dispatchEvent(event);
+  },
+  (error) => {
+    alert("خطأ في تحديد الموقع: " + error.message);
   }
 );
 </script>
@@ -74,31 +90,34 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return R * c
 
 if st.button(selected_texts["submit"]):
-    try:
-        lat, lon = map(float, location.split(","))
-        distance = calculate_distance(lat, lon, allowed_lat, allowed_lon)
+    if start_time and end_time:
+        try:
+            lat, lon = map(float, location.split(","))
+            distance = calculate_distance(lat, lon, allowed_lat, allowed_lon)
 
-        if distance <= allowed_distance:
-            conn = sqlite3.connect("pointage.db")
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS pointage (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
-                    position TEXT,
-                    department TEXT,
-                    start_time TEXT,
-                    end_time TEXT,
-                    date TEXT,
-                    location TEXT
-                )
-            """)
-            cursor.execute("INSERT INTO pointage (name, position, department, start_time, end_time, date, location) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                           (name, position, department, str(start_time), str(end_time), str(datetime.date.today()), location))
-            conn.commit()
-            conn.close()
-            st.success(selected_texts["success"])
-        else:
-            st.error(selected_texts["location_error"])
-    except:
-        st.error("Erreur de géolocalisation / خطأ في تحديد الموقع.")
+            if distance <= allowed_distance:
+                conn = sqlite3.connect("pointage.db")
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pointage (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT,
+                        position TEXT,
+                        department TEXT,
+                        start_time TEXT,
+                        end_time TEXT,
+                        date TEXT,
+                        location TEXT
+                    )
+                """)
+                cursor.execute("INSERT INTO pointage (name, position, department, start_time, end_time, date, location) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                               (name, position, department, str(start_time), str(end_time), str(datetime.date.today()), location))
+                conn.commit()
+                conn.close()
+                st.success(selected_texts["success"])
+            else:
+                st.error(selected_texts["location_error"])
+        except ValueError:
+            st.error("خطأ في تنسيق الموقع الجغرافي.")
+        except Exception as e:
+            st.error(f"حدث خطأ غير متوقع: {str(e)}")
