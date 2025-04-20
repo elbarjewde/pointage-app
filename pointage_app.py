@@ -76,8 +76,8 @@ navigator.geolocation.getCurrentPosition(
 location = st.text_input("Location (auto-filled)", key="location")
 
 # الموقع المسموح به
-allowed_lat = 18.0678770
-allowed_lon = -15.9618574
+allowed_lat = 18.0679325
+allowed_lon = -15.9618329
 allowed_distance = 0.2  # بالكيلومتر
 
 def calculate_distance(lat1, lon1, lat2, lon2):
@@ -89,10 +89,19 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     c = 2 * atan2(sqrt(a), sqrt(1-a))
     return R * c
 
+# التحقق من تنسيق الموقع
+def validate_location(location):
+    try:
+        lat, lon = map(float, location.split(","))
+        return lat, lon
+    except ValueError:
+        st.error("خطأ في تنسيق الموقع. تأكد من إدخال الإحداثيات بالشكل الصحيح (مثال: 18.0678770,-15.9618574).")
+        return None, None
+
 if st.button(selected_texts["submit"]):
     if start_time and end_time:
-        try:
-            lat, lon = map(float, location.split(","))
+        lat, lon = validate_location(location)
+        if lat and lon:
             distance = calculate_distance(lat, lon, allowed_lat, allowed_lon)
 
             if distance <= allowed_distance:
@@ -117,7 +126,3 @@ if st.button(selected_texts["submit"]):
                 st.success(selected_texts["success"])
             else:
                 st.error(selected_texts["location_error"])
-        except ValueError:
-            st.error("خطأ في تنسيق الموقع الجغرافي.")
-        except Exception as e:
-            st.error(f"حدث خطأ غير متوقع: {str(e)}")
